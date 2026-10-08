@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./App.css";
 
 function App() {
+  const apiBaseUrl = import.meta.env.VITE_API_URL || window.location.origin;
   const [resume, setResume] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
   const [analysis, setAnalysis] = useState(null);
@@ -36,9 +37,7 @@ function App() {
     formData.append("jobDescription", jobDescription);
 
     try {
-     const response = await fetch(
-  "https://ai-resume-analyzer-server-beta.vercel.app/api/upload",
-  {
+      const response = await fetch(`${apiBaseUrl}/api/upload`, {
         method: "POST",
         body: formData,
       });

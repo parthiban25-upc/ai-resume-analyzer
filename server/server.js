@@ -3,7 +3,7 @@ const cors = require("cors");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const { PDFParse } = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 require("dotenv").config();
 
@@ -241,9 +241,8 @@ async function extractTextFromFile(fileData, fileName) {
       data: pdfBuffer,
     });
 
-    const pdfData = await parser.getText();
-
-    return pdfData.text || "";
+    const pdfData = await pdfParse(pdfBuffer);
+      return pdfData.text || "";
   }
 
   /* ---------- DOCX / DOC ---------- */
@@ -371,3 +370,5 @@ module.exports.calculateMatchScore =
   calculateMatchScore;
 module.exports.extractTextFromFile =
   extractTextFromFile;
+
+
