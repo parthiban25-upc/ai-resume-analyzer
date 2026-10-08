@@ -8,24 +8,37 @@ const mammoth = require("mammoth");
 require("dotenv").config();
 
 const app = express();
+
 const clientDistPath = path.join(__dirname, "..", "client", "dist");
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(clientDistPath));
 
+/* =========================
+   FILE UPLOAD CONFIGURATION
+========================= */
+
 const upload = multer({
-  dest: "uploads/",
+  storage: multer.memoryStorage(),
+
   limits: {
     fileSize: 10 * 1024 * 1024,
   },
+
   fileFilter: (req, file, callback) => {
     const allowedTypes = [".pdf", ".doc", ".docx"];
-    const fileExtension = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf("."));
+
+    const fileExtension = file.originalname
+      .toLowerCase()
+      .slice(file.originalname.lastIndexOf("."));
+
     const isAllowed = allowedTypes.includes(fileExtension);
 
     if (!isAllowed) {
-      callback(new Error("Only PDF and DOC/DOCX resume files are allowed."));
+      callback(
+        new Error("Only PDF and DOC/DOCX resume files are allowed.")
+      );
       return;
     }
 
@@ -33,16 +46,99 @@ const upload = multer({
   },
 });
 
+/* =========================
+   STOP WORDS
+========================= */
+
 const STOP_WORDS = new Set([
-  "the", "a", "an", "and", "or", "but", "for", "to", "of", "in", "on", "with",
-  "at", "by", "from", "as", "is", "it", "be", "are", "was", "were", "this", "that",
-  "these", "those", "we", "you", "your", "our", "their", "they", "he", "she", "his",
-  "her", "i", "me", "my", "mine", "us", "have", "has", "had", "will", "would", "should",
-  "can", "could", "may", "might", "about", "into", "over", "under", "after", "before",
-  "than", "then", "also", "more", "most", "some", "any", "all", "not", "no", "yes",
-  "through", "between", "during", "using", "used", "work", "working", "experience",
-  "skills", "skill", "team", "strong", "background", "job", "role"
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "for",
+  "to",
+  "of",
+  "in",
+  "on",
+  "with",
+  "at",
+  "by",
+  "from",
+  "as",
+  "is",
+  "it",
+  "be",
+  "are",
+  "was",
+  "were",
+  "this",
+  "that",
+  "these",
+  "those",
+  "we",
+  "you",
+  "your",
+  "our",
+  "their",
+  "they",
+  "he",
+  "she",
+  "his",
+  "her",
+  "i",
+  "me",
+  "my",
+  "mine",
+  "us",
+  "have",
+  "has",
+  "had",
+  "will",
+  "would",
+  "should",
+  "can",
+  "could",
+  "may",
+  "might",
+  "about",
+  "into",
+  "over",
+  "under",
+  "after",
+  "before",
+  "than",
+  "then",
+  "also",
+  "more",
+  "most",
+  "some",
+  "any",
+  "all",
+  "not",
+  "no",
+  "yes",
+  "through",
+  "between",
+  "during",
+  "using",
+  "used",
+  "work",
+  "working",
+  "experience",
+  "skills",
+  "skill",
+  "team",
+  "strong",
+  "background",
+  "job",
+  "role",
 ]);
+
+/* =========================
+   TEXT PROCESSING
+========================= */
 
 function normalizeWords(text = "") {
   return text
@@ -54,10 +150,18 @@ function normalizeWords(text = "") {
 }
 
 function extractKeywords(text = "") {
-  return [...new Set(
-    normalizeWords(text).filter((word) => !STOP_WORDS.has(word) && word.length > 2)
-  )];
+  return [
+    ...new Set(
+      normalizeWords(text).filter(
+        (word) => !STOP_WORDS.has(word) && word.length > 2
+      )
+    ),
+  ];
 }
+
+/* =========================
+   RESUME MATCH SCORE
+========================= */
 
 function calculateMatchScore(resumeText = "", jobDescription = "") {
   const jobKeywords = extractKeywords(jobDescription);
@@ -72,15 +176,44 @@ function calculateMatchScore(resumeText = "", jobDescription = "") {
     };
   }
 
-  const matchedKeywords = [...new Set(jobKeywords.filter((keyword) => resumeKeywords.includes(keyword)))];
-  const missingKeywords = jobKeywords.filter((keyword) => !resumeKeywords.includes(keyword));
-  const score = Math.min(100, Math.max(0, Math.round((matchedKeywords.length / jobKeywords.length) * 100)));
+  const matchedKeywords = [
+    ...new Set(
+      jobKeywords.filter((keyword) =>
+        resumeKeywords.includes(keyword)
+      )
+    ),
+  ];
 
-  let summary = "Your resume has a moderate fit for this role.";
-  if (score >= 80) summary = "Strong match: your resume aligns well with the role.";
-  else if (score >= 60) summary = "Good match: a few missing keywords could improve your fit.";
-  else if (score >= 40) summary = "Partial match: the resume covers some of the role requirements.";
-  else if (score > 0) summary = "Low match: the resume is missing several role requirements.";
+  const missingKeywords = jobKeywords.filter(
+    (keyword) => !resumeKeywords.includes(keyword)
+  );
+
+  const score = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        (matchedKeywords.length / jobKeywords.length) * 100
+      )
+    )
+  );
+
+  let summary =
+    "Your resume has a moderate fit for this role.";
+
+  if (score >= 80) {
+    summary =
+      "Strong match: your resume aligns well with the role.";
+  } else if (score >= 60) {
+    summary =
+      "Good match: a few missing keywords could improve your fit.";
+  } else if (score >= 40) {
+    summary =
+      "Partial match: the resume covers some of the role requirements.";
+  } else if (score > 0) {
+    summary =
+      "Low match: the resume is missing several role requirements.";
+  }
 
   return {
     score,
@@ -90,26 +223,53 @@ function calculateMatchScore(resumeText = "", jobDescription = "") {
   };
 }
 
-async function extractTextFromFile(filePath, fileName) {
-  const extension = fileName.toLowerCase().substring(fileName.lastIndexOf("."));
+/* =========================
+   FILE TEXT EXTRACTION
+========================= */
+
+async function extractTextFromFile(fileData, fileName) {
+  const extension = fileName
+    .toLowerCase()
+    .substring(fileName.lastIndexOf("."));
+
+  /* ---------- PDF ---------- */
 
   if (extension === ".pdf") {
-    const pdfBuffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: pdfBuffer });
+    const pdfBuffer = fileData;
+
+    const parser = new PDFParse({
+      data: pdfBuffer,
+    });
+
     const pdfData = await parser.getText();
+
     return pdfData.text || "";
   }
 
+  /* ---------- DOCX / DOC ---------- */
+
   if (extension === ".docx" || extension === ".doc") {
-    const result = await mammoth.extractRawText({ path: filePath });
+    const result = await mammoth.extractRawText({
+      buffer: fileData,
+    });
+
     return result.value || "";
   }
 
-  throw new Error("Unsupported file type. Please upload a PDF or DOCX document.");
+  throw new Error(
+    "Unsupported file type. Please upload a PDF or DOCX document."
+  );
 }
 
+/* =========================
+   HEALTH CHECK
+========================= */
+
 app.get("/", (req, res) => {
-  const indexPath = path.join(clientDistPath, "index.html");
+  const indexPath = path.join(
+    clientDistPath,
+    "index.html"
+  );
 
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
@@ -120,41 +280,94 @@ app.get("/", (req, res) => {
   });
 });
 
-app.post("/api/upload", upload.single("resume"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        message: "Please upload a resume file.",
+/* =========================
+   RESUME UPLOAD API
+========================= */
+
+app.post(
+  "/api/upload",
+  upload.single("resume"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "Please upload a resume file.",
+        });
+      }
+
+      const resumeText = await extractTextFromFile(
+        req.file.buffer,
+        req.file.originalname
+      );
+
+      const jobDescription =
+        typeof req.body.jobDescription === "string"
+          ? req.body.jobDescription
+          : "";
+
+      const analysis = calculateMatchScore(
+        resumeText,
+        jobDescription
+      );
+
+      return res.json({
+        message:
+          "Resume uploaded and analyzed successfully.",
+
+        fileName: req.file.originalname,
+
+        resumeText,
+
+        analysis,
+      });
+    } catch (error) {
+      console.error(
+        "Resume processing error:",
+        error
+      );
+
+      return res.status(500).json({
+        message:
+          error.message ||
+          "Failed to extract resume text.",
       });
     }
-
-    const resumeText = await extractTextFromFile(req.file.path, req.file.originalname);
-    const jobDescription = typeof req.body.jobDescription === "string" ? req.body.jobDescription : "";
-    const analysis = calculateMatchScore(resumeText, jobDescription);
-
-    return res.json({
-      message: "Resume uploaded and analyzed successfully.",
-      fileName: req.file.originalname,
-      resumeText,
-      analysis,
-    });
-  } catch (error) {
-    console.error("Resume processing error:", error);
-
-    return res.status(500).json({
-      message: error.message || "Failed to extract resume text.",
-    });
   }
+);
+
+/* =========================
+   ERROR HANDLER
+========================= */
+
+app.use((error, req, res, next) => {
+  console.error("Server error:", error);
+
+  return res.status(500).json({
+    message:
+      error.message || "Something went wrong on the server.",
+  });
 });
+
+/* =========================
+   LOCAL SERVER
+========================= */
 
 const PORT = process.env.PORT || 5001;
 
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(
+      `Server running on port ${PORT}`
+    );
   });
 }
 
+/* =========================
+   EXPORTS
+========================= */
+
 module.exports = app;
-module.exports.calculateMatchScore = calculateMatchScore;
-module.exports.extractTextFromFile = extractTextFromFile;
+module.exports.calculateMatchScore =
+  calculateMatchScore;
+module.exports.extractTextFromFile =
+  extractTextFromFile;

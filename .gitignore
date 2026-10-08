@@ -8,3 +8,5 @@ build/
 server/uploads/
 
 
+.vercel
+.env*
