@@ -149,14 +149,12 @@ app.post("/api/upload", upload.single("resume"), async (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 
-if (require.main === module) {
+if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-module.exports = {
-  app,
-  calculateMatchScore,
-  extractTextFromFile,
-};
+module.exports = app;
+module.exports.calculateMatchScore = calculateMatchScore;
+module.exports.extractTextFromFile = extractTextFromFile;
