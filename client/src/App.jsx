@@ -37,7 +37,7 @@ function App() {
     formData.append("jobDescription", jobDescription);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/upload`, {
+      const response = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/api/upload`, {
         method: "POST",
         body: formData,
       });
