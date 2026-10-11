@@ -234,16 +234,11 @@ async function extractTextFromFile(fileData, fileName) {
 
   /* ---------- PDF ---------- */
 
-  if (extension === ".pdf") {
-    const pdfBuffer = fileData;
-
-    const parser = new PDFParse({
-      data: pdfBuffer,
-    });
-
-    const pdfData = await pdfParse(pdfBuffer);
-      return pdfData.text || "";
-  }
+ 
+if (extension === ".pdf") {
+  const pdfData = await pdfParse(fileData);
+  return pdfData.text || "";
+}
 
   /* ---------- DOCX / DOC ---------- */
 
